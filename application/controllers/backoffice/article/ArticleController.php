@@ -35,6 +35,8 @@
 			
 			$loadData                   = $this->CommonModel->getDataLimit('ijps_tblmanuscript', array('isActive'=>'1', 'manuscriptID'=>$prop), '', '', '', '', '' ,'manuscriptID','ASC');
 			
+			$articleResult = null;
+			
 			if(isset($loadData[0]['uniqueCode']))
 			{
 			    $loadData['info']           = $this->CommonModel->getDataLimit('ijps_tblmanuscriptinfo', array('isActive'=>'1', 'articleID'=> $loadData[0]['uniqueCode']), '', '', '', '', '' ,'manuscriptInfoID','ASC'); 
@@ -55,7 +57,7 @@
 			}
 		
 		//	echo "<pre>";print_r($loadData['accepted_date']['created_data']);exit;
-            $this->load->view(BACKOFFICE.'article/addArticle',['articalTypeResult' => $articalTypeResult, 'volumeResult' => $volumeResult, 'issueResult' => $issueResult, 'manuscriptResult' => $manuscriptResult, 'authorResult' => $authorResult, 'loadData'=> $loadData, 'designationResult'=>$designationResult]);
+            $this->load->view(BACKOFFICE.'article/addArticle',['articalTypeResult' => $articalTypeResult, 'volumeResult' => $volumeResult, 'issueResult' => $issueResult, 'manuscriptResult' => $manuscriptResult, 'authorResult' => $authorResult, 'loadData'=> $loadData, 'designationResult'=>$designationResult, 'articleResult' => $articleResult]);
     	}
     	
     	public function removeSpecial(){

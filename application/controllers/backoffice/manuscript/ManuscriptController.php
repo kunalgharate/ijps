@@ -670,9 +670,7 @@
                             }
                         }
 
-                        $emailString = rtrim($emailString, ', ');                       
-                       echo $file_url = $this->input->post('articlePdf');
-				     die;
+                        $emailString = rtrim($emailString, ', ');
         				$file_name = basename($file_url);
         				$ext = substr(strrchr($file_name, '.'), 1);
         		    	$file1 = "mailAttachment1-".date('YmdHis').".".$ext; 

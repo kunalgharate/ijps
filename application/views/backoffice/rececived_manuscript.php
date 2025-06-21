@@ -75,7 +75,7 @@ $this->load->view(BACKOFFICE . 'layout/sidemenu');
                
                 <input class="form-control" type="hidden" name="txtTitleOfPaper" id="txtTitleOfPaper" value="">
 
-                <dvi class="container">
+                <div class="container">
                     <div class="mb-5" >
                     <label for="">Status</label>
                     <select class="form-control cmbStatusID" name="cmbStatusID" id="cmbStatusID" onchange="showRespectiveDiv(this)" required>
@@ -126,11 +126,11 @@ $this->load->view(BACKOFFICE . 'layout/sidemenu');
 							</div>
 						</div>
                     </div>
-						<div id="rejectDiv" style="display:none;">
-							<label for="">Message</label>
-							<textarea class="form-control" name="txtMessage" rows="6"><?= htmlentities($message ?? '', ENT_QUOTES, "UTF-8") ?></textarea>
-						</div>
-                </dvi>
+					<div id="rejectDiv" style="display:none;">
+						<label for="">Message</label>
+						<textarea class="form-control" name="txtMessage" rows="6"><?= htmlentities($message ?? '', ENT_QUOTES, "UTF-8") ?></textarea>
+					</div>
+                </div>
             </div>
             <div class="modal-footer">
                 <!-- <button type="button" class="btn btn-secondary" id="dismissModal">Close</button> -->
@@ -178,7 +178,8 @@ $deleteData = base_url(). BACKOFFICE .'manuscript/ManuscriptController/deleteMan
                                 type: "success",                               
                                 }).then((result) => {
                                 if (result.isConfirmed) {
-                                    location.reload();
+                                    // Refresh DataTable instead of page reload
+                                    table1.ajax.reload(null, false);
                                 }
                             });
                                
@@ -350,29 +351,138 @@ $deleteData = base_url(). BACKOFFICE .'manuscript/ManuscriptController/deleteMan
 			}).then((result) => {
 				if (result.isConfirmed) {
 					var bodyFormData = new FormData(form);
+					
+					// Show loading indicator
+					Swal.fire({
+						title: 'Processing...',
+						text: 'Please wait while we update the status.',
+						allowOutsideClick: false,
+						allowEscapeKey: false,
+						showConfirmButton: false,
+						didOpen: () => {
+							Swal.showLoading();
+						}
+					});
+					
 					$.ajax({
-						url:  '<?php echo $updateLink; ?>',
+						url: '<?php echo $updateLink; ?>',
 						type: 'POST',
 						contentType: false,
 						processData: false,
 						data: bodyFormData,
-						success: function (data) {
-							var jsonParse = JSON.parse(data);
-							if (jsonParse.status == 'success') {
-								Swal.fire({
-									title: "Updated!",
-									text: jsonParse.msg,
-									icon: "success"
-								});
-								// $(form).trigger("reset");
-								location.reload();
-							} else {
+						success: function (data, textStatus, xhr) {
+							console.log('Raw response:', data);
+							console.log('Response type:', typeof data);
+							console.log('Content-Type:', xhr.getResponseHeader('Content-Type'));
+							
+							// Check if response is empty
+							if (!data || data.trim() === '') {
 								Swal.fire({
 									icon: "error",
-									title: "Oops...",
-									text: jsonParse.status
+									title: "Error!",
+									text: "Server returned empty response. Please check server logs."
 								});
+								return;
 							}
+							
+							try {
+								// Try to parse JSON
+								var jsonParse;
+								if (typeof data === 'string') {
+									jsonParse = JSON.parse(data);
+								} else {
+									jsonParse = data; // Already parsed
+								}
+								
+								console.log('Parsed JSON:', jsonParse);
+								
+								if (jsonParse.status == 'success') {
+									Swal.fire({
+										title: "Updated!",
+										text: jsonParse.msg || "Status updated successfully!",
+										icon: "success",
+										timer: 2000,
+										showConfirmButton: false
+									}).then(() => {
+										// Close the modal
+										$('#exampleModal').modal('hide');
+										
+										// Refresh the DataTable to show updated data
+										if (typeof table1 !== 'undefined') {
+											table1.ajax.reload(null, false);
+										}
+										
+										// Reset the form
+										$(form).trigger("reset");
+										
+										// Hide all conditional divs
+										$("#acceptedDiv").hide();
+										$("#rejectDiv").hide();
+										$("#publishedDiv").hide();
+										
+										// Reset status dropdown to default
+										$("#cmbStatusID").val('1');
+									});
+								} else {
+									Swal.fire({
+										icon: "error",
+										title: "Update Failed",
+										text: jsonParse.msg || jsonParse.message || "Failed to update status"
+									});
+								}
+							} catch (parseError) {
+								console.error('JSON Parse Error:', parseError);
+								console.log('Trying to parse:', data);
+								
+								// Check if response contains HTML (PHP error)
+								if (data.includes('<html>') || data.includes('<!DOCTYPE')) {
+									Swal.fire({
+										icon: "error",
+										title: "Server Error",
+										text: "Server returned HTML instead of JSON. Check PHP error logs.",
+										footer: '<details><summary>Response Preview</summary><pre style="text-align: left; max-height: 200px; overflow-y: auto;">' + 
+												data.substring(0, 500) + (data.length > 500 ? '...' : '') + '</pre></details>'
+									});
+								} else {
+									Swal.fire({
+										icon: "error",
+										title: "Invalid Response",
+										text: "Server returned invalid JSON format.",
+										footer: '<small>Check console for details</small>'
+									});
+								}
+							}
+						},
+						error: function(xhr, status, error) {
+							console.error('AJAX Error:', {
+								status: xhr.status,
+								statusText: xhr.statusText,
+								responseText: xhr.responseText,
+								error: error
+							});
+							
+							let errorMessage = "An error occurred while updating the status.";
+							
+							if (xhr.status === 0) {
+								errorMessage = "Network error. Please check your connection.";
+							} else if (xhr.status === 404) {
+								errorMessage = "Server endpoint not found (404).";
+							} else if (xhr.status === 500) {
+								errorMessage = "Internal server error (500). Check server logs.";
+							} else if (xhr.status === 403) {
+								errorMessage = "Access forbidden (403). Check permissions.";
+							}
+							
+							Swal.fire({
+								icon: "error",
+								title: "Request Failed",
+								text: errorMessage,
+								footer: '<small>Error Code: ' + xhr.status + '</small>'
+							});
+						},
+						complete: function() {
+							// This runs whether success or error
+							console.log('AJAX request completed');
 						}
 					});
 				}
