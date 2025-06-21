@@ -1,0 +1,93 @@
+.bg-brand
+{
+	background-color: var(--theme-color)!important;
+}
+
+body 
+{
+	color: #4B5564 !important;
+}
+
+.text-muted {
+    color: #78879B!important;
+}
+
+.text-dark {
+    color: #000000!important;
+}
+
+.form-group label {
+    font-size: 1.1rem;
+    font-weight: 400;
+    color: #4B5564;
+}
+
+.form-control {
+    font-size: 1rem;
+    color: #4B5564;
+    background-color: #fff;
+    border: 1px solid #D9DEE8;
+}
+
+.btn.btn-primary.focus:not(.btn-text), .btn.btn-primary:focus:not(.btn-text), .btn.btn-primary:hover:not(.btn-text):not(:disabled):not(.disabled) {
+    color: #fff;
+    background-color: #003C7D;
+    border-color: #003C7D;
+}
+
+.card.card-custom>.card-header .card-title, .card.card-custom>.card-header .card-title .card-label {
+    color: #000000!important
+}
+
+.dataTables_wrapper .dataTable td.sorting_asc, .dataTables_wrapper .dataTable th.sorting_asc {
+    color: var(--theme-color)!important;
+}
+
+.navi .navi-item .navi-link .navi-text {
+    color: #4B5564;
+}
+
+.text-dark-75 {
+    color: #4B5564!important;
+}
+
+.btn-light-twitter i {
+    color: var(--theme-color) !important;
+    /*background-color: rgba(0,60,125,.1) !important;*/
+    border-color: transparent !important;
+}
+
+.label.label-light-designation {
+    color: var(--theme-color);
+    background-color: #2196f31a;
+}
+
+i {
+    font-size: 1.25rem;
+    color: var(--theme-color);
+}
+
+.separator.separator-solid {
+    border-bottom: 1px solid #D9DEE8;
+}
+
+.text-brand {
+    color: var(--theme-color)!important;
+}
+
+
+
+/*
+tk Brand Blue RGB 000 / 160 / 245	: var(--theme-color)
+tk Light Gray RGB 238 / 240 / 242	: #EEF0F2
+tk Gray RGB 217 / 222 / 232			: #D9DEE8
+tk Medium Gray RGB 120 / 135 / 155	: #78879B
+tk Dark Gray RGB 75 / 85 / 100		: #4B5564
+tk Black RGB 000 / 000 / 000		: #000000
+
+tk Dark Blue RGB 0 / 60 / 125		: #003C7D
+tk Medium Blue RGB 0 / 85 / 190		: #0055BE
+tk Blue RGB 0 / 120 / 220			: #0078DC
+tk Bright Blue RGB 80 / 175 / 225	: #50AFE1
+tk Light Blue RGB 115 / 195 / 240	: #73C3F0
+*/

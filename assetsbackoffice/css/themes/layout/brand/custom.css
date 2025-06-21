@@ -1,0 +1,88 @@
+@media (min-width:992px) {
+	.brand {
+		background-color: var(--sixteen-color);
+		-webkit-box-shadow: none;
+		box-shadow: none
+	}
+	.brand .btn i {
+		color: var(--seven-color)
+	}
+	.brand .btn .svg-icon svg g [fill] {
+		-webkit-transition: fill .3s ease;
+		transition: fill .3s ease;
+		fill: var(--seven-color)
+	}
+	.brand .btn .svg-icon svg:hover g [fill] {
+		-webkit-transition: fill .3s ease;
+		transition: fill .3s ease
+	}
+	.brand .btn.active .svg-icon svg g [fill],
+	.brand .btn:hover .svg-icon svg g [fill] {
+		-webkit-transition: fill .3s ease;
+		transition: fill .3s ease;
+		fill: var(--five-color)
+	}
+	.brand .btn.active .svg-icon svg:hover g [fill],
+	.brand .btn:hover .svg-icon svg:hover g [fill] {
+		-webkit-transition: fill .3s ease;
+		transition: fill .3s ease
+	}
+	.brand .btn.active i,
+	.brand .btn:hover i {
+		color: var(--five-color)
+	}
+}
+
+@media (max-width:991.98px) {
+	.header-mobile {
+		background-color: var(--sixteen-color)
+	}
+	.header-mobile .burger-icon span {
+		background-color: var(--fifteen-color)
+	}
+	.header-mobile .burger-icon span::after,
+	.header-mobile .burger-icon span::before {
+		background-color: var(--fifteen-color)
+	}
+	.header-mobile .burger-icon:hover span {
+		background-color: var(--five-color)
+	}
+	.header-mobile .burger-icon:hover span::after,
+	.header-mobile .burger-icon:hover span::before {
+		background-color: var(--five-color)
+	}
+	.header-mobile .burger-icon-active span {
+		background-color: var(--five-color)
+	}
+	.header-mobile .burger-icon-active span::after,
+	.header-mobile .burger-icon-active span::before {
+		background-color: var(--five-color)
+	}
+	.header-mobile .btn i {
+		color: var(--fifteen-color)
+	}
+	.header-mobile .btn .svg-icon svg g [fill] {
+		-webkit-transition: fill .3s ease;
+		transition: fill .3s ease;
+		fill: var(--fifteen-color)
+	}
+	.header-mobile .btn .svg-icon svg:hover g [fill] {
+		-webkit-transition: fill .3s ease;
+		transition: fill .3s ease
+	}
+	.header-mobile .btn.active .svg-icon svg g [fill],
+	.header-mobile .btn:hover .svg-icon svg g [fill] {
+		-webkit-transition: fill .3s ease;
+		transition: fill .3s ease;
+		fill: var(--five-color)
+	}
+	.header-mobile .btn.active .svg-icon svg:hover g [fill],
+	.header-mobile .btn:hover .svg-icon svg:hover g [fill] {
+		-webkit-transition: fill .3s ease;
+		transition: fill .3s ease
+	}
+	.header-mobile .btn.active i,
+	.header-mobile .btn:hover i {
+		color: var(--five-color)
+	}
+}

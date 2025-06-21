@@ -1,0 +1,246 @@
+<?php
+
+    defined('BASEPATH') OR exit('No direct script access allowed');
+    
+    class LoginController extends CI_Controller 
+    {
+        public function __construct() 
+        {
+            parent::__construct();
+            
+            $this->load->model(BACKOFFICE.'loginmodel', 'login');
+        }
+        
+    	public function index()
+    	{
+    	    $settingResult	= $this->CommonModel->getDataLimit('tblsetting', array('isActive'=>'1'), '', '', '', '', '' ,'settingID  ','ASC');
+    	    $this->session->set_userdata('favicon', $settingResult[0]['favicon']);
+					$this->session->set_userdata('lightLogo', $settingResult[0]['lightLogo']);
+    	    
+			if($this->session->userdata('userFullName') != "" && $this->session->userdata('mailID') != "" && $this->session->userdata('is_login_admin'))
+    	    {
+    	        $num_rows    = $this->CommonModel->getData('tbluser', array('userID'=>$this->session->userdata('adminID')),'','','num_rows');
+				
+    	        if($num_rows)
+				{
+    	             redirect(BACKOFFICE.'dashboard', 'refresh');
+    	        }
+				else
+				{
+    	             $this->load->view(BACKOFFICE.'login/Login', ['menuResult' => $menuResult, 'settingsResult' => $settingsResult]);
+    	        }
+    	    }
+    	    else
+    	    {
+    	        $this->load->view(BACKOFFICE.'LoginView');
+    	    }
+    	}
+    	
+    	function verifyOtp(){
+			
+            if($this->input->post('txtUserName') !="" && $this->input->post('txtPassword') != "")
+            {
+                $result = $this->login->checkLogin($this->input->post('txtUserName'), $this->input->post('txtPassword'));
+
+                if ($result)
+                {
+					$subject='OTP Verify';
+				//	$to = 'sunily46@gmail.com';
+				//  	$to = 'eijpsjournal@gmail.com';
+				$to = 'rk9409@gmail.com';
+					$otp = mt_rand(100000, 999999);
+					
+				   $message = 'Your OTP is: ' . $otp;
+					// $_SESSION['otp'] = $otp;
+					$_SESSION['otp'] = '123456'; // Fixed OTP for testing
+					//sendMail($subject, $message, $to, '0', '', '');
+
+					 // OPTION 1: Log OTP to console/file for debugging
+					 log_message('debug', 'Generated OTP for testing: ' . $otp . ' for user: ' . $this->input->post('txtUserName'));
+					 error_log('OTP Generated: ' . $otp . ' for user: ' . $this->input->post('txtUserName'));
+					
+					$this->load->library('emaillib');
+                    $mail = $this->emaillib->load();
+                   $mail->addAddress('editor@ijpsjournal.com');
+                    $mail->addAddress($to);
+                    $mail->Subject = $subject;
+                    $mail->Body =$message;
+                   $mail->send();
+					$data['otp'] = $otp;
+					$this->load->view('backoffice/otpVerify',['email'=>$this->input->post('txtUserName'),'password'=>$this->input->post('txtPassword')]);
+
+				}else{
+					$this->session->set_userdata('toastrError', 'Username/ Password wrong..');
+					redirect(BACKOFFICE.'login', 'refresh');
+				}
+			}else 
+            {   
+				$this->session->set_userdata('toastrWarning', 'Please fill all details...');
+				redirect(BACKOFFICE.'login', 'refresh');
+            }
+		}
+         function authenticateUser() 
+        {
+			
+            if($this->input->post('txtOtp') !="" && $this->input->post('txtUserName') !="" && $this->input->post('txtPassword') != "")
+            {
+
+				
+				if(trim($this->input->post('txtOtp'))== trim($this->session->userdata('otp'))){
+					$settingResult	= $this->CommonModel->getDataLimit('tblsetting', array('isActive'=>'1'), '', '', '', '', '' ,'settingID  ','ASC');
+                    $result = $this->login->checkLogin($this->input->post('txtUserName'), $this->input->post('txtPassword'));
+                    $row = $result->row();
+                    $this->session->set_userdata('mailID', $this->input->post('txtUserName'));									
+					$this->session->set_userdata('profilePhoto', $row->profilePhoto);
+					$this->session->set_userdata('adminprofilePhoto', $row->profilePhoto);
+					$this->session->set_userdata('userFullName', $row->userFullName);
+					$this->session->set_userdata('adminuserFullName', $row->userFullName);
+					$this->session->set_userdata('userID', $row->userID);
+					$this->session->set_userdata('adminID', $row->userID);
+					$this->session->set_userdata('is_login_admin', 1);
+					$this->session->set_userdata('userType', $row->userType);
+					
+					$this->session->set_userdata('favicon', $settingResult[0]['favicon']);
+					$this->session->set_userdata('lightLogo', $settingResult[0]['lightLogo']);
+					
+					$this->session->set_userdata('themeColor', 'businesstheme');
+					
+					// Add activity log start
+					$prop = array( 
+							'description'		=>  "Login Admin/HR (userID : ".$row->userID." - Username : ".$this->session->userdata('mailID').")",
+							'createdByUserID'   =>  $this->session->userdata['userID']
+						);
+					$this->CommonModel->insertRecord(ACTIVITY_LOG_TABLE, $prop);
+					unset($_SESSION['otp']);
+					// Add activity log end
+					redirect(BACKOFFICE.'dashboard', 'refresh');
+				}else
+             	{					
+					$this->session->set_userdata('toastrError', 'Username/ Password wrong..');
+					redirect(BACKOFFICE.'login', 'refresh');
+             	}
+            }
+        	else
+            {
+				$this->session->set_userdata('toastrWarning', 'Please fill all details...');
+				redirect(BACKOFFICE.'login', 'refresh');
+            }
+        }
+        
+        function authenticateUser_bk() 
+        {
+            if($this->input->post('txtUserName') !="" && $this->input->post('txtPassword') != "")
+            {
+                $result = $this->login->checkLogin($this->input->post('txtUserName'), $this->input->post('txtPassword'));
+
+
+
+                if ($result) /*($result->num_rows() > 0)*/
+                {	
+                    $settingResult	= $this->CommonModel->getDataLimit('tblsetting', array('isActive'=>'1'), '', '', '', '', '' ,'settingID  ','ASC');
+                    
+                    $row = $result->row();
+                    $this->session->set_userdata('mailID', $this->input->post('txtUserName'));									
+					$this->session->set_userdata('profilePhoto', $row->profilePhoto);
+					$this->session->set_userdata('adminprofilePhoto', $row->profilePhoto);
+					$this->session->set_userdata('userFullName', $row->userFullName);
+					$this->session->set_userdata('adminuserFullName', $row->userFullName);
+					$this->session->set_userdata('userID', $row->userID);
+					$this->session->set_userdata('adminID', $row->userID);
+					$this->session->set_userdata('is_login_admin', 1);
+					$this->session->set_userdata('userType', $row->userType);
+					
+					$this->session->set_userdata('favicon', $settingResult[0]['favicon']);
+					$this->session->set_userdata('lightLogo', $settingResult[0]['lightLogo']);
+					
+					
+					
+					$this->session->set_userdata('themeColor', 'businesstheme');
+					
+					// Add activity log start
+					$prop = array( 
+							'description'		=>  "Login Admin/HR (userID : ".$row->userID." - Username : ".$this->input->post('txtUserName').")",
+							'createdByUserID'   =>  $this->session->userdata['userID']
+						);
+					$this->CommonModel->insertRecord(ACTIVITY_LOG_TABLE, $prop);
+					// Add activity log end
+
+					redirect(BACKOFFICE.'dashboard', 'refresh');
+             	}
+             	else
+             	{
+             	    /*echo "<script>alert('Username/ Password wrong..');
+                    window.location.href='../login';
+                    </script>";*/
+					
+					$this->session->set_userdata('toastrError', 'Username/ Password wrong..');
+					redirect(BACKOFFICE.'login', 'refresh');
+             	}
+            } 	
+        	else 
+            {
+               /*echo "<script>alert(''Please fill all details...');
+                window.location.href='../login';
+                </script>";*/
+				
+				$this->session->set_userdata('toastrWarning', 'Please fill all details...');
+				redirect(BACKOFFICE.'login', 'refresh');
+            }
+        }
+        
+        function signOut()
+        {
+			// Add activity log start
+			$prop = array( 
+					'description'		=>  "Signout Admin/HR (userID : ".$this->session->userdata('userID')." - Username : ".$this->session->userdata('mailID').")",
+					'createdByUserID'   =>  $this->session->userdata['userID']
+				);
+			$this->CommonModel->insertRecord(ACTIVITY_LOG_TABLE, $prop);
+			// Add activity log end
+			
+            $this->session->sess_destroy();
+            redirect(BACKOFFICE.'LoginController', 'refresh');
+        }
+        
+        
+        public function setVisibilityUser()
+        {
+            $userID    = $this->input->get('userID'); 
+            $isActive  		= $this->input->get('isActive');
+           
+            if($isActive == 1)
+            {
+                $isActive = 0; 
+            }
+            else if($isActive == 0)
+            {
+                $isActive = 1;
+            }
+            
+            $bool = $this->login->setVisibilityUser($isActive, $userID);
+            
+            if ($bool == 1)
+            {
+				// Add activity log start
+					$prop = array( 
+							'description'		=>  "Login Admin/HR : Visibility Changed (userID : ".$userID." - Visibility Set As ".$isActive.")",
+							'createdByUserID'   =>  $this->session->userdata['userID']
+						);
+					$this->CommonModel->insertRecord(ACTIVITY_LOG_TABLE, $prop);
+					// Add activity log end
+					
+				$this->session->set_userdata('toastrSuccess', 'User visibility updated successfully...');
+				echo "<script>window.location.href='../dataTable/DataTableController/index?show=users';</script>";
+				redirect(BACKOFFICE.SHOW_DATA_USERS, 'refresh');
+            }
+            else
+            {
+				
+				$this->session->set_userdata('toastrError', 'User visibility update error...');
+				echo "<script>window.location.href='../dataTable/DataTableController/index?show=users';</script>";
+				redirect(BACKOFFICE.SHOW_DATA_USERS, 'refresh');
+            }
+        }
+        
+
+    }
