@@ -81,30 +81,22 @@ $this->load->view(BACKOFFICE . 'layout/jsfiles');
 <script> 
 
     
-    //user users listing datatables
-    var table1;
-    table1 = $('#list').DataTable({
-
+    $('#list').DataTable({
+        "processing": true,
+        "serverSide": true, // <--- IMPORTANT!
         "lengthMenu": [
             [10, 25, 50, -1],
             [10, 25, 50, "All"]
         ],
-        "processing": true,
-
-        "order": [
-            [0, 'desc']
-        ],
+        "order": [[0, "desc"]],
         "ajax": {
-            "url": "<?php echo site_url('backoffice/Receviedmanuscript/manageArticleList') ?>",
-            "type": "POST",
-            "data": function() {
-
-            }
+            "url": "<?php echo site_url('backoffice/Receviedmanuscript/manageArticleList'); ?>",
+            "type": "POST"
         },
         "columnDefs": [{
             "targets": "_all",
             "orderable": false,
-        }, ],
+        }]
     });
 
    
