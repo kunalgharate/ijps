@@ -677,18 +677,20 @@
         			    copy(UPLOAD_ARTICLE.$file_name,UPLOAD_ARTICLE.$file1);
         			
         				
-        				if($_FILES['file2']['name']=="")
+        				if(isset($_FILES['file2']['name']) && $_FILES['file2']['name']=="")
         				{
         					$file2 = "";
         				}
         				else
         				{
-        					$ext = substr(strrchr($_FILES['file2']['name'], '.'), 1);
-        					$file2 = "mailAttachment2-".date('YmdHis').".".$ext;
+                            if(isset($_FILES['file2']['name']) && $_FILES['file2']['name']!=""){
+        					    $ext = substr(strrchr($_FILES['file2']['name'], '.'), 1);
+        					    $file2 = "mailAttachment2-".date('YmdHis').".".$ext;
+                            }
         				}
         				
     					
-    					if($_FILES["file2"]["name"] != "")
+    					if(isset($_FILES["file2"]["name"]) && $_FILES["file2"]["name"] != "")
     					{
     						/******************************** File 2 Upload *********************************/
     						$target_file    = UPLOAD_ARTICLE.$file2;
@@ -696,7 +698,8 @@
     						/**********  File 2 Upload *********************************/
     					}
                         $file_info =pathinfo($this->input->post('articlePdf'));
-    					$article_url = base_url('article/'). $file_info['filename'];
+    					$article_url = (isset($file_info['filename']) && !empty($file_info['filename'])) ? base_url('article/') . $file_info['filename'] : '';
+
     			
     					
 				        $subject = "Article Published Successfully - IJPS journal (Paper_id : IJPS/".$this->input->post('txtArticleID').")";

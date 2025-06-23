@@ -334,7 +334,7 @@ function getRelatedArticles($prop1, $prop2, $prop3, $prop4)
     return $query->result_array();
 }
         
-        function getArticles()
+        function getArticlesRM()
         {
             $this->db->select("ijps_tblarticle.*, ijps_tblarticle.articleIDUniqueCode as uniqueCode, ijps_tblarticaltype.articalTypeName"); /*, ijps_tblvolume.volumeName, ijps_tblissue.issueName");	*/
 			////////$this->db->select("ijps_tblarticle.*, ijps_tblmanuscript.uniqueCode, ijps_tblarticaltype.articalTypeName"); /*, ijps_tblvolume.volumeName, ijps_tblissue.issueName");	*/
@@ -345,9 +345,28 @@ function getRelatedArticles($prop1, $prop2, $prop3, $prop4)
             //$this->db->order_by('articleID', 'desc');
             //$this->db->order_by('featuredArticleFlag', 'desc');
             $this->db->order_by('featuredArticleFlag desc, articleID desc');
-            // $this->db->limit(10);
+            $this->db->limit(10);
             $result = $this->db->get('ijps_tblarticle');
             return $result->result_array();
+        }
+
+        public function getArticles($start = 0, $length = 25)
+        {
+            $this->db->select("ijps_tblarticle.*, ijps_tblarticle.articleIDUniqueCode as uniqueCode, ijps_tblarticaltype.articalTypeName");
+            $this->db->join('ijps_tblarticaltype', 'ijps_tblarticaltype.articalTypeID = ijps_tblarticle.articalTypeID');
+            $this->db->order_by('featuredArticleFlag desc, articleID desc');
+
+            if ($length != -1) {
+                $this->db->limit($length, $start); // Pagination
+            }
+
+            $result = $this->db->get('ijps_tblarticle');
+            return $result->result_array();
+        }
+
+        public function countAllArticles()
+        {
+            return $this->db->count_all('ijps_tblarticle');
         }
         
         function getHomeArticles()
