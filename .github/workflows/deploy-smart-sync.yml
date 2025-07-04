@@ -7,27 +7,67 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 45  # Increased timeout for large project
     
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
 
-    - name: Prepare deployment
+    - name: Aggressive cleanup for large project
       run: |
-        echo "🚀 Preparing smart sync deployment..."
+        echo "🚀 Preparing smart sync deployment for large project..."
         
-        # Remove development files only
+        # Show initial size
+        echo "📊 Initial project size:"
+        du -sh . 2>/dev/null || echo "Size check complete"
+        
+        # Remove development files
         rm -rf .git
         rm -rf .github  
         rm -rf tests
+        rm -rf node_modules
         rm -f .gitignore
         rm -f README.md
         rm -f *.md
+        rm -f phpunit.xml
+        rm -f composer.lock
         
-        echo "✅ Files prepared for sync"
+        # Aggressive cleanup of unnecessary files
+        find . -name "*.log" -type f -delete 2>/dev/null || true
+        find . -name "error_log*" -type f -delete 2>/dev/null || true
+        find . -name "*.tmp" -type f -delete 2>/dev/null || true
+        find . -name "*.cache" -type f -delete 2>/dev/null || true
+        find . -name "*.bak" -type f -delete 2>/dev/null || true
+        find . -name "*.backup" -type f -delete 2>/dev/null || true
+        find . -name "*.old" -type f -delete 2>/dev/null || true
+        find . -name ".DS_Store" -type f -delete 2>/dev/null || true
+        find . -name "Thumbs.db" -type f -delete 2>/dev/null || true
+        
+        # Clean vendor directory (major space saver)
+        if [ -d "vendor" ]; then
+          find vendor -name "tests" -type d -exec rm -rf {} + 2>/dev/null || true
+          find vendor -name "test" -type d -exec rm -rf {} + 2>/dev/null || true
+          find vendor -name "docs" -type d -exec rm -rf {} + 2>/dev/null || true
+          find vendor -name "doc" -type d -exec rm -rf {} + 2>/dev/null || true
+          find vendor -name "examples" -type d -exec rm -rf {} + 2>/dev/null || true
+          find vendor -name ".git" -type d -exec rm -rf {} + 2>/dev/null || true
+          rm -rf vendor/bin 2>/dev/null || true
+        fi
+        
+        # Remove large media files
+        find . -name "*.mp4" -type f -delete 2>/dev/null || true
+        find . -name "*.avi" -type f -delete 2>/dev/null || true
+        find . -name "*.mov" -type f -delete 2>/dev/null || true
+        find . -name "*.zip" -type f -delete 2>/dev/null || true
+        find . -name "*.tar.gz" -type f -delete 2>/dev/null || true
+        
+        # Show optimized size
+        echo "📊 Optimized project size:"
+        du -sh . 2>/dev/null || echo "Optimization complete"
+        
+        echo "✅ Files prepared for smart sync"
 
-    - name: Smart Sync to Hostinger
+    - name: Smart Sync to Hostinger (Optimized)
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4
       with:
         server: ${{ secrets.FTP_SERVER }}
@@ -36,31 +76,87 @@ jobs:
         local-dir: ./
         server-dir: /public_html/
         
-        # KEY SETTINGS FOR SKIPPING EXISTING FILES
-        state-name: .ftp-deploy-sync-state.json  # Tracks what's already uploaded
+        # Optimized settings for large projects
+        state-name: .ftp-deploy-sync-state.json  # Tracks uploaded files
         dry-run: false
-        log-level: standard
-        timeout: 300000  # 5 minutes
-        
-        # Only upload changed files
+        log-level: minimal  # Reduce logging overhead for speed
+        timeout: 2700000   # 45 minutes in milliseconds
         dangerous-clean-slate: false  # Don't delete everything first
         
+        # Comprehensive exclusion list for faster deployment
         exclude: |
           **/.git*
           **/.git*/**
           **/node_modules/**
           **/tests/**
+          **/test/**
           **/.github/**
+          **/vendor/bin/**
+          **/vendor/*/tests/**
+          **/vendor/*/test/**
+          **/vendor/*/docs/**
+          **/vendor/*/doc/**
+          **/vendor/*/examples/**
+          **/vendor/*/sample/**
+          **/vendor/*/.git/**
+          **/vendor/*/.*
           **/*.md
+          **/*.txt
           **/*.log
-          **/error_log*
-          **/.DS_Store
+          **/*.tmp
+          **/*.cache
+          **/*.bak
+          **/*.backup
+          **/*.old
+          **/*.orig
+          **/*.swp
+          **/*.swo
           **/Thumbs.db
+          **/.DS_Store
+          **/desktop.ini
+          **/error_log*
+          **/access_log*
+          **/backup*/**
+          **/old*/**
+          **/temp*/**
+          **/tmp*/**
+          **/cache*/**
+          **/*_backup*
+          **/*_old*
+          **/*_temp*
+          **/*.zip
+          **/*.tar.gz
+          **/*.rar
+          **/*.7z
+          **/*.mp4
+          **/*.avi
+          **/*.mov
+          **/*.mkv
+          **/*.wmv
+          **/composer.lock
+          **/phpunit.xml
+          **/.gitignore
+          **/README*
+          **/CHANGELOG*
+          **/LICENSE*
 
     - name: Deployment Summary
       if: success()
       run: |
-        echo "✅ Smart sync deployment completed!"
+        echo "✅ Smart sync deployment completed successfully!"
         echo "⚡ Only changed files were uploaded"
         echo "🎯 Existing files were skipped automatically"
         echo "⏱️ Much faster than full upload!"
+        echo "🗂️ Large/unnecessary files excluded for speed"
+        echo "📈 Future deployments will be lightning fast!"
+
+    - name: Deployment Failed
+      if: failure()
+      run: |
+        echo "❌ Deployment failed even with optimizations"
+        echo ""
+        echo "🔧 Possible solutions:"
+        echo "1. Project might still be too large for GitHub Actions"
+        echo "2. Try manual FTP upload for initial deployment"
+        echo "3. Consider uploading core files only first"
+        echo "4. Check if there are extremely large database/media files"
