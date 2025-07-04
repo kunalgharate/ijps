@@ -228,9 +228,9 @@ class Receviedmanuscript extends CI_Controller
 	   exit();
 	}
     
-    public function manageArticleList()
+    public function manageArticleListRM()
 	{
-	    ini_set('memory_limit', '4G');
+	    ini_set('memory_limit', '0');
 
 	   $draw = intval($this->input->get("draw"));
 	   $start = intval($this->input->get("start"));
@@ -299,6 +299,95 @@ class Receviedmanuscript extends CI_Controller
 	   echo json_encode($result);
 	   exit();
 	}
+
+	public function manageArticleList()
+	{
+		ini_set('memory_limit', '0');
+
+		$draw = intval($this->input->post("draw"));
+		$start = intval($this->input->post("start"));
+		$length = intval($this->input->get("length"));
+
+		// Get paginated records
+		$articles = $this->ArticleModel->getArticles($start, $length);
+		// Get total records for pagination
+		$totalRecords = $this->ArticleModel->countAllArticles();
+
+		$data = [];
+
+		foreach ($articles as $v) {
+			$isFetureId = ($v['featuredArticleFlag'] == "0") ? "No" : "Yes";
+			$icon = ($v['isActive'] == '0') ? "far fa-eye-slash" : "far fa-eye";
+			$tooltiptext = ($v['isActive'] == '0') ? "Activate" : "Deactivate";
+
+			$data[] = array(
+				"IJPS/" . $v['articleID'],
+				"IJPS/" . $v['uniqueCode'],
+				$isFetureId,
+				"<a href='" . base_url() . UPLOAD_ARTICLE . $v['document'] . "' download><i class='fa fa-cloud-download-alt text-primary1 mt-3' style='color: #3E97FF;!important;cursor:pointer'></i></a>",
+				$v['articalTypeID'],
+				$v['titleOfPaper'],
+				$v['createdDate'],
+				$v['doi'],
+				$v['keywords'],
+				$v['citation'],
+				"<a href='" . site_url(BACKOFFICE . 'updatearticle/' . $v['articleID']) . "' class='btn btn-sm btn-clean btn-icon mr-2' title='Edit Details'><i class='far fa-edit'></i></a>
+				<a href='" . site_url(BACKOFFICE . 'article/setVisibility/' . $v['articleID'] . "/" . $v['isActive']) . "' title='" . $tooltiptext . "' class='btn btn-sm btn-clean btn-icon mr-2'><i class='" . $icon . "'></i></a>
+				<a href='" . site_url(BACKOFFICE . 'article/deleteData/' . $v['articleID']) . "' onclick='return confirm(\"Are you sure you want to delete this item?\")' class='btn btn-sm btn-clean btn-icon mr-2' title='Delete Record permanently'><i class='far fa-trash-alt'></i></a>"
+			);
+		}
+
+		$result = array(
+			"draw" => $draw,
+			"recordsTotal" => $totalRecords,
+			"recordsFiltered" => $totalRecords,
+			"data" => $data
+		);
+
+		header('Content-Type: application/json');
+		echo json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+		exit();
+	}
+	
+	public function customArticleList()
+    {
+        $page = $this->input->post('page') ?? 1;
+        $search = $this->input->post('search') ?? '';
+        $limit = 10;
+        $offset = ($page - 1) * $limit;
+    
+        $articles = $this->ArticleModel->getCustomArticles($limit, $offset, $search);
+        $total = $this->ArticleModel->countCustomArticles($search);
+        $totalPages = ceil($total / $limit);
+    
+        $data = [];
+        foreach ($articles as $index => $v) {
+            $data[] = [
+                'articleID' => 'IJPS/' . $v['articleID'],
+                'isFeatured' => ($v['featuredArticleFlag'] == "0") ? "No" : "Yes",
+                'document' => "<a href='" . base_url() . UPLOAD_ARTICLE . $v['document'] . "' download><i class='fa fa-cloud-download-alt text-primary1 mt-3'></i></a>",
+                'articleType' => $v['articalTypeID'],
+                'title' => $v['titleOfPaper'],
+                'publishedDate' => $v['createdDate'],
+                'doi' => $v['doi'],
+                'keywords' => $v['keywords'],
+                'citation' => $v['citation'],
+                'actions' => "
+                    <a href='" . site_url(BACKOFFICE . 'updatearticle/' . $v['articleID']) . "' class='btn btn-sm btn-clean btn-icon mr-2' title='Edit Details'><i class='far fa-edit'></i></a>
+                    <a href='" . site_url(BACKOFFICE . 'article/setVisibility/' . $v['articleID'] . "/" . $v['isActive']) . "' title='" . ($v['isActive'] == '0' ? "Activate" : "Deactivate") . "' class='btn btn-sm btn-clean btn-icon mr-2'><i class='" . ($v['isActive'] == '0' ? "far fa-eye-slash" : "far fa-eye") . "'></i></a>
+                    <a href='" . site_url(BACKOFFICE . 'article/deleteData/' . $v['articleID']) . "' onclick='return confirm(\"Are you sure you want to delete this item?\")' class='btn btn-sm btn-clean btn-icon mr-2' title='Delete Record permanently'><i class='far fa-trash-alt'></i></a>"
+            ];
+        }
+    
+        echo json_encode([
+            'articles' => $data,
+            'start' => $offset,
+            'totalPages' => $totalPages
+        ]);
+    }
+
+
+
 	public function manageArticleView(){
 	
 	       
