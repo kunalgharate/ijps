@@ -1,0 +1,107 @@
+name: Deploy to Hostinger (Minimal)
+
+on:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Prepare files for deployment
+      run: |
+        echo "🚀 Preparing files for deployment..."
+        
+        # Remove development files that shouldn't be deployed
+        rm -rf .git
+        rm -rf .github  
+        rm -rf tests
+        rm -rf node_modules
+        rm -f .gitignore
+        rm -f README.md
+        rm -f phpunit.xml
+        rm -f deploy.sh
+        rm -f *.md
+        
+        # Remove any existing log files
+        find . -name "*.log" -type f -delete
+        find . -name "error_log*" -type f -delete
+        
+        # Create necessary directories
+        mkdir -p application/logs
+        mkdir -p application/cache  
+        mkdir -p uploads
+        
+        # Create security index.html files
+        echo '<!DOCTYPE html><html><head><title>403 Forbidden</title></head><body><h1>Directory access is forbidden.</h1></body></html>' > application/logs/index.html
+        echo '<!DOCTYPE html><html><head><title>403 Forbidden</title></head><body><h1>Directory access is forbidden.</h1></body></html>' > application/cache/index.html
+        echo '<!DOCTYPE html><html><head><title>403 Forbidden</title></head><body><h1>Directory access is forbidden.</h1></body></html>' > uploads/index.html
+        
+        # List files to be deployed
+        echo "📁 Files prepared for deployment:"
+        ls -la
+
+    - name: Deploy to Hostinger
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      with:
+        server: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        local-dir: ./
+        server-dir: /public_html/
+        exclude: |
+          **/.git*
+          **/.git*/**
+          **/node_modules/**
+          **/tests/**
+          **/.github/**
+          **/README.md
+          **/phpunit.xml
+          **/.DS_Store
+          **/Thumbs.db
+          **/*.log
+          **/error_log*
+          **/deploy.sh
+          **/*.md
+
+    - name: Post-deployment check
+      if: success()
+      run: |
+        echo "✅ Deployment completed successfully!"
+        echo ""
+        echo "🎉 Your IJPS Journal website has been deployed to Hostinger!"
+        echo ""
+        echo "📋 What was deployed:"
+        echo "   ✓ CodeIgniter application files"
+        echo "   ✓ System files and libraries"
+        echo "   ✓ Views and templates"
+        echo "   ✓ Assets and uploads directory"
+        echo "   ✓ Configuration files"
+        echo ""
+        echo "🔍 Next steps:"
+        echo "   1. Visit your website to verify it's working"
+        echo "   2. Check database connection"
+        echo "   3. Test key functionality"
+        echo "   4. Monitor for any errors"
+
+    - name: Deployment failed
+      if: failure()
+      run: |
+        echo "❌ Deployment failed!"
+        echo ""
+        echo "🔧 Troubleshooting steps:"
+        echo "   1. Check your GitHub Secrets:"
+        echo "      - FTP_SERVER (e.g., ftp.yourdomain.com)"
+        echo "      - FTP_USERNAME (your Hostinger username)"
+        echo "      - FTP_PASSWORD (your Hostinger password)"
+        echo ""
+        echo "   2. Verify Hostinger settings:"
+        echo "      - FTP access is enabled"
+        echo "      - /public_html/ directory exists"
+        echo "      - Correct server address"
+        echo ""
+        echo "   3. Check the error logs above for specific issues"
