@@ -343,8 +343,8 @@ class Receviedmanuscript extends CI_Controller
 			"recordsFiltered" => $totalRecords,
 			"data" => $data
 		);
-
-		echo json_encode($result);
+		header('Content-Type: application/json');
+		echo json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 		exit();
 	}
 
