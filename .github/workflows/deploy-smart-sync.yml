@@ -7,7 +7,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 45  # Increased timeout for large project
+    timeout-minutes: 300  # Increased timeout for large project
     
     steps:
     - name: Checkout repository
