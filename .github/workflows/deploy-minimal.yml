@@ -91,7 +91,7 @@ jobs:
     - name: Deployment failed
       if: failure()
       run: |
-        echo "❌ Deployment failed!"
+        echo " Deployment failed!"
         echo ""
         echo "🔧 Troubleshooting steps:"
         echo "   1. Check your GitHub Secrets:"
