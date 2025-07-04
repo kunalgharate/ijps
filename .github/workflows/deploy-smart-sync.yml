@@ -1,0 +1,66 @@
+name: Smart Sync Deploy (Skip Existing Files)
+
+on:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Prepare deployment
+      run: |
+        echo "🚀 Preparing smart sync deployment..."
+        
+        # Remove development files only
+        rm -rf .git
+        rm -rf .github  
+        rm -rf tests
+        rm -f .gitignore
+        rm -f README.md
+        rm -f *.md
+        
+        echo "✅ Files prepared for sync"
+
+    - name: Smart Sync to Hostinger
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      with:
+        server: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        local-dir: ./
+        server-dir: /public_html/
+        
+        # KEY SETTINGS FOR SKIPPING EXISTING FILES
+        state-name: .ftp-deploy-sync-state.json  # Tracks what's already uploaded
+        dry-run: false
+        log-level: standard
+        timeout: 300000  # 5 minutes
+        
+        # Only upload changed files
+        dangerous-clean-slate: false  # Don't delete everything first
+        
+        exclude: |
+          **/.git*
+          **/.git*/**
+          **/node_modules/**
+          **/tests/**
+          **/.github/**
+          **/*.md
+          **/*.log
+          **/error_log*
+          **/.DS_Store
+          **/Thumbs.db
+
+    - name: Deployment Summary
+      if: success()
+      run: |
+        echo "✅ Smart sync deployment completed!"
+        echo "⚡ Only changed files were uploaded"
+        echo "🎯 Existing files were skipped automatically"
+        echo "⏱️ Much faster than full upload!"
