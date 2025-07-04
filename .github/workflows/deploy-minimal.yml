@@ -14,7 +14,7 @@ jobs:
 
     - name: Prepare files for deployment
       run: |
-        echo " Preparing files for deployment..."
+        echo "🚀 Preparing files for deployment..."
         
         # Remove development files that shouldn't be deployed
         rm -rf .git
