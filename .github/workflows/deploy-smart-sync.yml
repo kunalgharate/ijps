@@ -1,9 +1,14 @@
-name: Smart Sync Deploy (Skip Existing Files)
+name: Smart Sync Deploy (Skip Existing Files) - DISABLED
+
+# Temporarily disabled due to large project size causing timeouts
+# Use deploy-changes-only.yml instead for recent changes
+# or deploy-batch.sh for manual deployment
 
 on:
-  push:
-    branches: [ main, master ]
-  workflow_dispatch:  # Allow manual triggering
+  # Disabled - uncomment when needed for full deployment
+  # push:
+  #   branches: [ main, master ]
+  workflow_dispatch:  # Only allow manual triggering
 
 jobs:
   deploy:

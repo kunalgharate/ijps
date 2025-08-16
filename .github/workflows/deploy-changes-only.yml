@@ -1,0 +1,85 @@
+name: Deploy Recent Changes Only
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  deploy-changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60  # Much shorter timeout for small changes
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 10  # Get recent history to compare changes
+
+    - name: Identify Changed Files
+      id: changes
+      run: |
+        echo "🔍 Identifying files changed in recent commits..."
+        
+        # Get files changed in last 3 commits (your recent work)
+        git diff --name-only HEAD~3..HEAD > changed_files.txt
+        
+        echo "📝 Files that will be deployed:"
+        cat changed_files.txt
+        
+        echo "📊 Number of changed files: $(wc -l < changed_files.txt)"
+        
+        # Create a deployment directory with only changed files
+        mkdir -p deploy-changes
+        
+        # Copy only the changed files, preserving directory structure
+        while IFS= read -r file; do
+          if [ -f "$file" ]; then
+            # Create directory structure
+            mkdir -p "deploy-changes/$(dirname "$file")"
+            # Copy the file
+            cp "$file" "deploy-changes/$file"
+            echo "✅ Copied: $file"
+          fi
+        done < changed_files.txt
+        
+        echo "📦 Deployment package created with only changed files"
+        du -sh deploy-changes/
+
+    - name: Deploy Changed Files Only
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      with:
+        server: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        local-dir: ./deploy-changes/
+        server-dir: /public_html/
+        
+        # Optimized for small deployments
+        state-name: .ftp-deploy-changes-state.json
+        dry-run: false
+        log-level: standard
+        timeout: 1800000   # 30 minutes - plenty for small changes
+        dangerous-clean-slate: false
+        security: strict
+
+    - name: Deployment Success
+      if: success()
+      run: |
+        echo "✅ Recent changes deployed successfully!"
+        echo "🎯 Only modified files were uploaded"
+        echo "⚡ Fast deployment completed"
+        echo "📈 Your recent security and optimization changes are now live!"
+
+    - name: Deployment Failed
+      if: failure()
+      run: |
+        echo "❌ Changes-only deployment failed"
+        echo ""
+        echo "🔧 Troubleshooting steps:"
+        echo "1. The deployment package was very small (only recent changes)"
+        echo "2. Check FTP credentials in repository secrets"
+        echo "3. Try manual deployment of specific files"
+        echo ""
+        echo "📁 Files that were attempted to deploy:"
+        cat changed_files.txt || echo "Could not read changed files list"
