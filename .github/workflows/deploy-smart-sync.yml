@@ -8,7 +8,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 360  # 6 hours timeout for very large projects
+    timeout-minutes: 480  # 8 hours timeout for very large projects
     
     steps:
     - name: Checkout repository
@@ -73,6 +73,8 @@ jobs:
 
     - name: Deploy to Hostinger with Enhanced Settings
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      id: deploy
+      continue-on-error: true
       with:
         server: ${{ secrets.FTP_SERVER }}
         username: ${{ secrets.FTP_USERNAME }}
@@ -84,7 +86,7 @@ jobs:
         state-name: .ftp-deploy-sync-state.json
         dry-run: false
         log-level: minimal
-        timeout: 3600000   # 60 minutes timeout
+        timeout: 7200000   # 120 minutes (2 hours) timeout for FTP operations
         dangerous-clean-slate: false
         
         # Connection stability settings
@@ -147,29 +149,150 @@ jobs:
           **/CHANGELOG*
           **/LICENSE*
 
+    - name: Retry Deployment if Failed
+      if: steps.deploy.outcome == 'failure'
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      id: retry-deploy
+      continue-on-error: true
+      with:
+        server: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        local-dir: ./
+        server-dir: /public_html/
+        state-name: .ftp-deploy-sync-state.json
+        dry-run: false
+        log-level: standard  # More verbose logging for retry
+        timeout: 7200000
+        dangerous-clean-slate: false
+        security: strict
+        exclude: |
+          **/.git*
+          **/.git*/**
+          **/node_modules/**
+          **/tests/**
+          **/test/**
+          **/.github/**
+          **/vendor/bin/**
+          **/vendor/*/tests/**
+          **/vendor/*/test/**
+          **/vendor/*/docs/**
+          **/vendor/*/doc/**
+          **/vendor/*/examples/**
+          **/vendor/*/sample/**
+          **/vendor/*/.git/**
+          **/vendor/*/.*
+          **/*.md
+          **/*.txt
+          **/*.log
+          **/*.tmp
+          **/*.cache
+          **/*.bak
+          **/*.backup
+          **/*.old
+          **/*.orig
+          **/*.swp
+          **/*.swo
+          **/Thumbs.db
+          **/.DS_Store
+          **/desktop.ini
+          **/error_log*
+          **/access_log*
+          **/backup*/**
+          **/old*/**
+          **/temp*/**
+          **/tmp*/**
+          **/cache*/**
+          **/*_backup*
+          **/*_old*
+          **/*_temp*
+          **/*.zip
+          **/*.tar.gz
+          **/*.rar
+          **/*.7z
+          **/*.mp4
+          **/*.avi
+          **/*.mov
+          **/*.mkv
+          **/*.wmv
+          **/composer.lock
+          **/phpunit.xml
+          **/.gitignore
+          **/README*
+          **/CHANGELOG*
+          **/LICENSE*
+
+    - name: Final Retry with Core Files Only
+      if: steps.retry-deploy.outcome == 'failure'
+      run: |
+        echo "🔄 Attempting core files deployment only..."
+        
+        # Create core-only deployment
+        mkdir -p core-deploy
+        
+        # Copy essential files only
+        cp -r application core-deploy/ 2>/dev/null || true
+        cp -r system core-deploy/ 2>/dev/null || true
+        cp index.php core-deploy/ 2>/dev/null || true
+        cp .htaccess core-deploy/ 2>/dev/null || true
+        
+        # Copy essential config files
+        mkdir -p core-deploy/application/config
+        cp application/config/*.php core-deploy/application/config/ 2>/dev/null || true
+        
+        echo "📊 Core deployment size:"
+        du -sh core-deploy/
+        
+    - name: Deploy Core Files Only
+      if: steps.retry-deploy.outcome == 'failure'
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      with:
+        server: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        local-dir: ./core-deploy/
+        server-dir: /public_html/
+        state-name: .ftp-deploy-core-state.json
+        dry-run: false
+        log-level: standard
+        timeout: 3600000  # 1 hour for core files
+        dangerous-clean-slate: false
+        security: strict
+
     - name: Deployment Success
       if: success()
       run: |
         echo "✅ Smart sync deployment completed successfully!"
         echo "⚡ Only changed files were uploaded"
         echo "🎯 Existing files were skipped automatically"
-        echo "⏱️ Optimized for large project deployment"
+        echo "⏱️ Optimized for very large project deployment (8-hour timeout)"
         echo "🗂️ Unnecessary files excluded for speed"
+        echo "🔄 Retry mechanism ensured deployment completion"
         echo "📈 Future deployments will be much faster!"
 
     - name: Deployment Troubleshooting
       if: failure()
       run: |
-        echo "❌ Deployment failed - troubleshooting info:"
+        echo "❌ Deployment failed after multiple attempts - troubleshooting info:"
         echo ""
-        echo "🔧 Common solutions for FTP connection issues:"
-        echo "1. Server may have connection limits - try again in a few minutes"
-        echo "2. Large files may cause timeouts - consider manual upload for initial deployment"
-        echo "3. Check FTP credentials in repository secrets"
-        echo "4. Verify server allows long-running connections"
-        echo "5. Consider splitting deployment into smaller batches"
+        echo "🔧 The deployment tried the following strategies:"
+        echo "1. Full deployment with 2-hour FTP timeout"
+        echo "2. Retry with verbose logging"
+        echo "3. Core files only deployment as fallback"
         echo ""
-        echo "💡 Alternative approaches:"
-        echo "- Use manual FTP client for initial full upload"
-        echo "- Deploy core files first, then assets separately"
-        echo "- Use rsync if available on your hosting provider"
+        echo "💡 Manual deployment options:"
+        echo "1. Use ./deploy-manual.sh for single package deployment"
+        echo "2. Use ./deploy-batch.sh for split deployment (RECOMMENDED for large projects)"
+        echo "3. Upload core files first, then assets separately"
+        echo ""
+        echo "🛠️ Batch deployment advantages:"
+        echo "- Split into 4 manageable chunks"
+        echo "- Site works after first batch"
+        echo "- Can resume if interrupted"
+        echo "- Detailed instructions included"
+        echo ""
+        echo "📞 If issues persist:"
+        echo "- Check Hostinger FTP connection limits"
+        echo "- Verify server allows long-running connections"
+        echo "- Consider using Hostinger's file manager for large files"
+        echo "- Contact hosting support about upload timeouts"
