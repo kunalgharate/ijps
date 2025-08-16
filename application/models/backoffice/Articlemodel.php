@@ -460,24 +460,91 @@ function getRelatedArticles($prop1, $prop2, $prop3, $prop4)
             return $query->result_array();
         }
         
-        public function getCustomArticles($limit, $offset, $search = '')
+        /**
+         * Optimized pagination method with filters and security
+         */
+        public function getCustomArticlesPaginated($limit, $offset, $search = '', $filters = [])
         {
-            $this->db->select("ijps_tblarticle.*, ijps_tblarticle.articleIDUniqueCode as uniqueCode, ijps_tblarticaltype.articalTypeName");
-            $this->db->join('ijps_tblarticaltype', 'ijps_tblarticaltype.articalTypeID = ijps_tblarticle.articalTypeID');
-            if (!empty($search)) {
-                $this->db->like('titleOfPaper', $search);
+            // Input validation
+            $limit = filter_var($limit, FILTER_VALIDATE_INT);
+            $offset = filter_var($offset, FILTER_VALIDATE_INT);
+            
+            if ($limit === false || $limit < 1 || $limit > 100) {
+                $limit = 10;
             }
-            $this->db->order_by('featuredArticleFlag desc, articleID desc');
+            if ($offset === false || $offset < 0) {
+                $offset = 0;
+            }
+            
+            $this->db->select("a.articleID, a.articleIDUniqueCode, a.titleOfPaper, a.createdDate, 
+                              a.doi, a.keywords, a.citation, a.document, a.featuredArticleFlag, 
+                              a.isActive, at.articalTypeName");
+            $this->db->from('ijps_tblarticle a');
+            $this->db->join('ijps_tblarticaltype at', 'at.articalTypeID = a.articalTypeID', 'left');
+            
+            // Apply search filter
+            if (!empty($search)) {
+                $search = $this->db->escape_like_str($search);
+                $this->db->group_start();
+                $this->db->like('a.titleOfPaper', $search);
+                $this->db->or_like('a.articleIDUniqueCode', $search);
+                $this->db->or_like('a.keywords', $search);
+                $this->db->group_end();
+            }
+            
+            // Apply additional filters
+            if (!empty($filters)) {
+                foreach ($filters as $field => $value) {
+                    if (in_array($field, ['isActive', 'featuredArticleFlag'])) {
+                        $this->db->where('a.' . $field, $value);
+                    }
+                }
+            }
+            
+            // Default active filter
+            if (!isset($filters['isActive'])) {
+                $this->db->where('a.isActive', '1');
+            }
+            
+            $this->db->order_by('a.featuredArticleFlag', 'desc');
+            $this->db->order_by('a.articleID', 'desc');
             $this->db->limit($limit, $offset);
-            return $this->db->get('ijps_tblarticle')->result_array();
+            
+            return $this->db->get()->result_array();
         }
         
-        public function countCustomArticles($search = '')
+        /**
+         * Optimized count method with filters
+         */
+        public function countCustomArticles($search = '', $filters = [])
         {
+            $this->db->from('ijps_tblarticle a');
+            
+            // Apply search filter
             if (!empty($search)) {
-                $this->db->like('titleOfPaper', $search);
+                $search = $this->db->escape_like_str($search);
+                $this->db->group_start();
+                $this->db->like('a.titleOfPaper', $search);
+                $this->db->or_like('a.articleIDUniqueCode', $search);
+                $this->db->or_like('a.keywords', $search);
+                $this->db->group_end();
             }
-            return $this->db->count_all_results('ijps_tblarticle');
+            
+            // Apply additional filters
+            if (!empty($filters)) {
+                foreach ($filters as $field => $value) {
+                    if (in_array($field, ['isActive', 'featuredArticleFlag'])) {
+                        $this->db->where('a.' . $field, $value);
+                    }
+                }
+            }
+            
+            // Default active filter
+            if (!isset($filters['isActive'])) {
+                $this->db->where('a.isActive', '1');
+            }
+            
+            return $this->db->count_all_results();
         }
 
 	}

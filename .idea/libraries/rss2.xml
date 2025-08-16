@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="rss2">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/assetsbackoffice/assets/public/Front/services/rss.zip!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

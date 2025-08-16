@@ -351,40 +351,137 @@ class Receviedmanuscript extends CI_Controller
 	
 	public function customArticleList()
     {
-        $page = $this->input->post('page') ?? 1;
-        $search = $this->input->post('search') ?? '';
+		// CSRF Protection
+		if (!$this->security->csrf_verify()) {
+			log_message('error', 'CSRF token mismatch in customArticleList');
+			echo json_encode(['error' => 'Security token mismatch']);
+			return;
+		}
+		
+		// Input validation and sanitization
+        $page = filter_var($this->input->post('page'), FILTER_VALIDATE_INT);
+        $search = trim($this->input->post('search', true));
+		$statusFilter = $this->input->post('status_filter', true);
+		$featuredFilter = $this->input->post('featured_filter', true);
+        
+		// Validate page number
+		if ($page === false || $page < 1) {
+			$page = 1;
+		}
+		
+		// Validate and sanitize search term
+		if (!empty($search)) {
+			$search = preg_replace('/[<>\"\'&]/', '', $search);
+			if (strlen($search) > 100) {
+				$search = substr($search, 0, 100);
+			}
+		}
+		
         $limit = 10;
         $offset = ($page - 1) * $limit;
+		
+		// Build filters array
+		$filters = [];
+		if (!empty($statusFilter) && in_array($statusFilter, ['0', '1'])) {
+			$filters['isActive'] = $statusFilter;
+		}
+		if (!empty($featuredFilter) && in_array($featuredFilter, ['0', '1'])) {
+			$filters['featuredArticleFlag'] = $featuredFilter;
+		}
     
-        $articles = $this->ArticleModel->getCustomArticles($limit, $offset, $search);
-        $total = $this->ArticleModel->countCustomArticles($search);
-        $totalPages = ceil($total / $limit);
-    
-        $data = [];
-        foreach ($articles as $index => $v) {
-            $data[] = [
-                'articleID' => 'IJPS/' . $v['articleID'],
-                'isFeatured' => ($v['featuredArticleFlag'] == "0") ? "No" : "Yes",
-                'document' => "<a href='" . base_url() . UPLOAD_ARTICLE . $v['document'] . "' download><i class='fa fa-cloud-download-alt text-primary1 mt-3'></i></a>",
-                'articleType' => $v['articalTypeID'],
-                'title' => $v['titleOfPaper'],
-                'publishedDate' => $v['createdDate'],
-                'doi' => $v['doi'],
-                'keywords' => $v['keywords'],
-                'citation' => $v['citation'],
-                'actions' => "
-                    <a href='" . site_url(BACKOFFICE . 'updatearticle/' . $v['articleID']) . "' class='btn btn-sm btn-clean btn-icon mr-2' title='Edit Details'><i class='far fa-edit'></i></a>
-                    <a href='" . site_url(BACKOFFICE . 'article/setVisibility/' . $v['articleID'] . "/" . $v['isActive']) . "' title='" . ($v['isActive'] == '0' ? "Activate" : "Deactivate") . "' class='btn btn-sm btn-clean btn-icon mr-2'><i class='" . ($v['isActive'] == '0' ? "far fa-eye-slash" : "far fa-eye") . "'></i></a>
-                    <a href='" . site_url(BACKOFFICE . 'article/deleteData/' . $v['articleID']) . "' onclick='return confirm(\"Are you sure you want to delete this item?\")' class='btn btn-sm btn-clean btn-icon mr-2' title='Delete Record permanently'><i class='far fa-trash-alt'></i></a>"
-            ];
-        }
-    
-        echo json_encode([
-            'articles' => $data,
-            'start' => $offset,
-            'totalPages' => $totalPages
-        ]);
+        try {
+			$articles = $this->ArticleModel->getCustomArticlesPaginated($limit, $offset, $search, $filters);
+			$total = $this->ArticleModel->countCustomArticles($search, $filters);
+			$totalPages = ceil($total / $limit);
+		
+			$data = [];
+			foreach ($articles as $index => $v) {
+				// Sanitize all output data
+				$articleData = [
+					'articleID' => 'IJPS/' . htmlspecialchars($v['articleID'], ENT_QUOTES, 'UTF-8'),
+					'isFeatured' => ($v['featuredArticleFlag'] == "0") ? "No" : "Yes",
+					'document' => $this->generateSecureDownloadLink($v['document']),
+					'articleType' => htmlspecialchars($v['articalTypeName'] ?? 'N/A', ENT_QUOTES, 'UTF-8'),
+					'title' => htmlspecialchars($v['titleOfPaper'], ENT_QUOTES, 'UTF-8'),
+					'publishedDate' => htmlspecialchars($v['createdDate'], ENT_QUOTES, 'UTF-8'),
+					'doi' => htmlspecialchars($v['doi'] ?? '', ENT_QUOTES, 'UTF-8'),
+					'keywords' => htmlspecialchars($v['keywords'] ?? '', ENT_QUOTES, 'UTF-8'),
+					'citation' => htmlspecialchars($v['citation'] ?? '', ENT_QUOTES, 'UTF-8'),
+					'actions' => $this->generateSecureActionButtons($v)
+				];
+				
+				$data[] = $articleData;
+			}
+		
+			$response = [
+				'articles' => $data,
+				'start' => $offset,
+				'totalPages' => $totalPages,
+				'totalRecords' => $total,
+				'currentPage' => $page,
+				'csrf_token' => $this->security->get_csrf_hash()
+			];
+			
+			echo json_encode($response);
+			
+		} catch (Exception $e) {
+			log_message('error', 'Error in customArticleList: ' . $e->getMessage());
+			echo json_encode(['error' => 'An error occurred while fetching articles']);
+		}
     }
+	
+	/**
+	 * Generate secure download link for documents
+	 */
+	private function generateSecureDownloadLink($document) {
+		if (empty($document)) {
+			return '<span class="text-muted">No document</span>';
+		}
+		
+		// Validate file exists and is safe
+		$filePath = UPLOAD_ARTICLE . $document;
+		if (!file_exists($filePath)) {
+			return '<span class="text-danger">File not found</span>';
+		}
+		
+		// Generate secure download URL
+		$downloadUrl = base_url("backoffice/article/secureDownload/" . urlencode($document));
+		return "<a href='" . $downloadUrl . "' class='btn btn-sm btn-outline-primary' title='Download Document'><i class='fa fa-cloud-download-alt'></i></a>";
+	}
+	
+	/**
+	 * Generate secure action buttons with proper validation
+	 */
+	private function generateSecureActionButtons($article) {
+		$articleID = filter_var($article['articleID'], FILTER_VALIDATE_INT);
+		if (!$articleID) {
+			return '<span class="text-danger">Invalid ID</span>';
+		}
+		
+		$isActive = $article['isActive'];
+		$visibilityIcon = ($isActive == '0') ? 'far fa-eye-slash' : 'far fa-eye';
+		$visibilityTitle = ($isActive == '0') ? 'Activate' : 'Deactivate';
+		
+		$actions = '';
+		
+		// Edit button
+		$editUrl = site_url(BACKOFFICE . 'updatearticle/' . $articleID);
+		$actions .= "<a href='" . $editUrl . "' class='btn btn-sm btn-outline-primary btn-action' title='Edit Details'>";
+		$actions .= "<i class='far fa-edit'></i></a> ";
+		
+		// Visibility toggle button
+		$visibilityUrl = site_url(BACKOFFICE . 'article/setVisibility/' . $articleID . "/" . $isActive);
+		$actions .= "<a href='" . $visibilityUrl . "' title='" . $visibilityTitle . "' class='btn btn-sm btn-outline-warning btn-action'>";
+		$actions .= "<i class='" . $visibilityIcon . "'></i></a> ";
+		
+		// Delete button with confirmation
+		$deleteUrl = site_url(BACKOFFICE . 'article/deleteData/' . $articleID);
+		$actions .= "<a href='" . $deleteUrl . "' onclick='return confirmDelete(\"" . htmlspecialchars($article['titleOfPaper'], ENT_QUOTES) . "\")' ";
+		$actions .= "class='btn btn-sm btn-outline-danger btn-action' title='Delete Record'>";
+		$actions .= "<i class='far fa-trash-alt'></i></a>";
+		
+		return $actions;
+	}
 
 
 
