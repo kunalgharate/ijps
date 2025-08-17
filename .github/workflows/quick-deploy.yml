@@ -1,0 +1,74 @@
+name: Quick Deploy - Recent Changes
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  quick-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 5
+
+    - name: Prepare Recent Changes
+      run: |
+        echo "🚀 Quick Deploy - Recent Changes Only"
+        mkdir -p quick-deploy
+        
+        # Get files changed in last 2 commits
+        git diff --name-only HEAD~2..HEAD | while read file; do
+          if [ -f "$file" ] && [[ ! "$file" =~ ^\.git ]]; then
+            mkdir -p "quick-deploy/$(dirname "$file")"
+            cp "$file" "quick-deploy/$file"
+            echo "✅ Added: $file"
+          fi
+        done
+        
+        # If no changes, deploy essential files
+        if [ ! "$(ls -A quick-deploy 2>/dev/null)" ]; then
+          echo "📦 No recent changes, deploying essential files..."
+          
+          # Copy deployment tools and configs
+          cp *.sh quick-deploy/ 2>/dev/null || true
+          cp *.txt quick-deploy/ 2>/dev/null || true
+          
+          # Copy any updated config files
+          mkdir -p quick-deploy/application/config
+          cp application/config/*.php quick-deploy/application/config/ 2>/dev/null || true
+        fi
+        
+        echo "📊 Quick deploy package size: $(du -sh quick-deploy | cut -f1)"
+        echo "📄 Files to deploy: $(find quick-deploy -type f | wc -l)"
+
+    - name: Deploy via FTP
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      with:
+        server: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        local-dir: ./quick-deploy/
+        server-dir: /public_html/
+        timeout: 600000  # 10 minutes
+        log-level: standard
+        dangerous-clean-slate: false
+
+    - name: Success
+      if: success()
+      run: |
+        echo "✅ Quick deployment completed!"
+        echo "🎯 Recent changes deployed successfully"
+        echo "⏱️  Deployment time: Under 20 minutes"
+
+    - name: Failure
+      if: failure()
+      run: |
+        echo "❌ Quick deployment failed"
+        echo "💡 Try manual deployment with prepared packages:"
+        echo "   - Assets package: ijps-assets-20250817-111648/ (127MB)"
+        echo "   - Complete package: ijps-complete-20250817-111603/ (165MB)"
