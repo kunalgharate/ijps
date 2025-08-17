@@ -1,0 +1,60 @@
+🚀 DEPLOYMENT VERIFICATION CHECKLIST
+===================================
+
+After uploading files to your server, verify these:
+
+🔧 CRITICAL FUNCTIONALITY:
+□ Homepage loads (yoursite.com)
+□ No PHP errors displayed
+□ Database connection works
+□ Admin/login area accessible
+
+🎨 VISUAL ELEMENTS:
+□ CSS styles loading correctly
+□ Images displaying properly
+□ JavaScript functionality working
+□ Responsive design working on mobile
+
+📁 FOLDER STRUCTURE ON SERVER:
+□ /application/ folder exists
+□ /system/ folder exists
+□ /assets/ folder exists
+□ /assetsbackoffice/ folder exists
+□ /images/ folder exists
+□ /uploads/ folder exists (if used)
+□ /vendor/ folder exists (if using Composer)
+
+📄 ESSENTIAL FILES ON SERVER:
+□ index.php in root directory
+□ .htaccess in root directory
+□ application/config/config.php
+□ application/config/database.php
+□ application/config/routes.php
+
+🔒 PERMISSIONS (set via FTP client):
+□ application/cache/ → 755 or 777
+□ application/logs/ → 755 or 777
+□ uploads/ → 755 or 777 (if exists)
+
+🌐 TEST THESE URLS:
+□ yoursite.com (homepage)
+□ yoursite.com/assets/css/style.css (should show CSS)
+□ yoursite.com/images/logo.png (or any image)
+□ yoursite.com/admin (or your admin URL)
+
+❌ IF SOMETHING IS MISSING:
+1. Check the file exists in your deployment package
+2. Re-upload the missing folder/file
+3. Verify folder permissions
+4. Check server error logs
+
+📊 DEPLOYMENT PACKAGES AVAILABLE:
+- Complete package: ijps-complete-20250817-111603
+- Assets only: 
+- Changes only: ci3-changes-20250817-105340
+
+💡 QUICK FIX FOR MISSING ASSETS:
+If only CSS/JS/images are missing, upload just the assets folders:
+- assets/
+- assetsbackoffice/
+- images/
