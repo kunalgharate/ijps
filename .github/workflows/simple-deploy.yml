@@ -1,0 +1,73 @@
+name: Simple Reliable Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      files_to_deploy:
+        description: 'Deploy specific files (comma-separated) or leave empty for recent changes'
+        required: false
+        type: string
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15  # Short timeout
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 3
+
+    - name: Prepare deployment files
+      run: |
+        mkdir -p deploy
+        
+        if [ -n "${{ github.event.inputs.files_to_deploy }}" ]; then
+          echo "📝 Deploying specific files: ${{ github.event.inputs.files_to_deploy }}"
+          IFS=',' read -ra FILES <<< "${{ github.event.inputs.files_to_deploy }}"
+          for file in "${FILES[@]}"; do
+            file=$(echo "$file" | xargs)  # trim whitespace
+            if [ -f "$file" ]; then
+              mkdir -p "deploy/$(dirname "$file")"
+              cp "$file" "deploy/$file"
+              echo "✅ Added: $file"
+            fi
+          done
+        else
+          echo "📝 Deploying recent changes..."
+          git diff --name-only HEAD~2..HEAD | while read file; do
+            if [ -f "$file" ]; then
+              mkdir -p "deploy/$(dirname "$file")"
+              cp "$file" "deploy/$file"
+              echo "✅ Added: $file"
+            fi
+          done
+        fi
+        
+        echo "📊 Deployment size: $(du -sh deploy | cut -f1)"
+        echo "📄 Files to deploy: $(find deploy -type f | wc -l)"
+
+    - name: Deploy via FTP
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      with:
+        server: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        local-dir: ./deploy/
+        server-dir: /public_html/
+        timeout: 300000  # 5 minutes
+        log-level: standard
+        dangerous-clean-slate: false
+
+    - name: Success
+      if: success()
+      run: |
+        echo "✅ Deployment completed successfully!"
+        echo "🎯 Files deployed in under 15 minutes"
+
+    - name: Failure
+      if: failure()
+      run: |
+        echo "❌ Deployment failed"
+        echo "💡 Try manual deployment with ./deploy-ci3.sh"

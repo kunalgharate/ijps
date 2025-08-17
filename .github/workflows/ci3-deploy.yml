@@ -1,0 +1,148 @@
+name: CodeIgniter 3 Production Deploy
+
+on:
+  workflow_dispatch:  # Manual trigger only
+    inputs:
+      deploy_type:
+        description: 'Deployment type'
+        required: true
+        default: 'changes-only'
+        type: choice
+        options:
+        - changes-only
+        - core-only
+        - full-deploy
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30  # Short timeout for focused deployment
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 5
+
+    - name: Setup deployment strategy
+      id: strategy
+      run: |
+        echo "🚀 CodeIgniter 3 Deployment Strategy: ${{ github.event.inputs.deploy_type }}"
+        
+        case "${{ github.event.inputs.deploy_type }}" in
+          "changes-only")
+            echo "strategy=changes" >> $GITHUB_OUTPUT
+            echo "📝 Deploying only recent changes"
+            ;;
+          "core-only")
+            echo "strategy=core" >> $GITHUB_OUTPUT
+            echo "🎯 Deploying core CI3 files only"
+            ;;
+          "full-deploy")
+            echo "strategy=full" >> $GITHUB_OUTPUT
+            echo "📦 Full deployment (use with caution)"
+            ;;
+        esac
+
+    - name: Prepare Changes-Only Deployment
+      if: steps.strategy.outputs.strategy == 'changes'
+      run: |
+        echo "📋 Preparing changes-only deployment..."
+        mkdir -p deploy-package
+        
+        # Get changed files from last 3 commits
+        git diff --name-only HEAD~3..HEAD > changed_files.txt
+        
+        echo "📝 Changed files:"
+        cat changed_files.txt
+        
+        # Copy only changed files
+        while IFS= read -r file; do
+          if [ -f "$file" ]; then
+            mkdir -p "deploy-package/$(dirname "$file")"
+            cp "$file" "deploy-package/$file"
+            echo "✅ Added: $file"
+          fi
+        done < changed_files.txt
+        
+        echo "📊 Package size: $(du -sh deploy-package | cut -f1)"
+
+    - name: Prepare Core-Only Deployment
+      if: steps.strategy.outputs.strategy == 'core'
+      run: |
+        echo "🎯 Preparing CodeIgniter 3 core deployment..."
+        mkdir -p deploy-package
+        
+        # Copy essential CI3 files only
+        cp -r application deploy-package/ 2>/dev/null || true
+        cp -r system deploy-package/ 2>/dev/null || true
+        cp index.php deploy-package/ 2>/dev/null || true
+        cp .htaccess deploy-package/ 2>/dev/null || true
+        
+        # Clean up unnecessary files from application
+        rm -rf deploy-package/application/logs/* 2>/dev/null || true
+        rm -rf deploy-package/application/cache/* 2>/dev/null || true
+        find deploy-package -name "*.log" -delete 2>/dev/null || true
+        find deploy-package -name ".DS_Store" -delete 2>/dev/null || true
+        
+        echo "📊 Core package size: $(du -sh deploy-package | cut -f1)"
+
+    - name: Prepare Full Deployment (Optimized)
+      if: steps.strategy.outputs.strategy == 'full'
+      run: |
+        echo "📦 Preparing optimized full deployment..."
+        mkdir -p deploy-package
+        
+        # Copy everything but exclude heavy/unnecessary files
+        rsync -av --progress \
+          --exclude='.git/' \
+          --exclude='.github/' \
+          --exclude='node_modules/' \
+          --exclude='*.log' \
+          --exclude='error_log*' \
+          --exclude='*.tmp' \
+          --exclude='.DS_Store' \
+          --exclude='Thumbs.db' \
+          --exclude='vendor/*/tests/' \
+          --exclude='vendor/*/docs/' \
+          --exclude='*.md' \
+          ./ deploy-package/
+        
+        echo "📊 Full package size: $(du -sh deploy-package | cut -f1)"
+
+    - name: Deploy to Server
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      with:
+        server: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        local-dir: ./deploy-package/
+        server-dir: /public_html/
+        
+        # Optimized settings for CI3
+        state-name: .ftp-deploy-ci3-state.json
+        dry-run: false
+        log-level: standard
+        timeout: 900000  # 15 minutes - reasonable for small packages
+        dangerous-clean-slate: false
+        security: strict
+
+    - name: Deployment Success
+      if: success()
+      run: |
+        echo "✅ CodeIgniter 3 deployment completed!"
+        echo "🎯 Strategy used: ${{ github.event.inputs.deploy_type }}"
+        echo "📊 Package deployed successfully"
+        echo "🌐 Your CI3 application should now be updated"
+
+    - name: Deployment Failed
+      if: failure()
+      run: |
+        echo "❌ CodeIgniter 3 deployment failed"
+        echo "🔧 Strategy attempted: ${{ github.event.inputs.deploy_type }}"
+        echo ""
+        echo "💡 Troubleshooting suggestions:"
+        echo "1. Try 'changes-only' deployment first"
+        echo "2. Check FTP credentials in repository secrets"
+        echo "3. Use manual deployment as backup"
+        echo "4. Verify server connectivity"
